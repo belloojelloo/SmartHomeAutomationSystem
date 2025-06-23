@@ -1,0 +1,58 @@
+/*
+ * main.c
+ *
+ *  Created on: Nov 2, 2024
+ *      Author: belal
+ */
+
+#include "lcd.h"
+#include <avr/io.h>
+#include "timer.h"
+#include <util/delay.h>
+#define PASS_SIZE 5
+#include "uart.h"
+uint8 result = 0;
+uint8 attempts = 0;
+void askPassword(char *password){
+	for (uint8 i = 0; i < PASS_SIZE; i++) {
+	        password[i] = Keypad_getPressedKey();
+	        LCD_displayCharacter('*');
+	        _delay_ms(500);
+	    }
+}
+
+int main(void){
+	UART_ConfigType uartconfig = {8,NONE,ONE_STOP_BIT,9600};
+	UART_init(&uartconfig);
+	LCD_init();
+	char password[PASS_SIZE];
+	char passwordReenter[PASS_SIZE];
+
+	while(1){
+		SREG |= (1<<7);
+		LCD_clearScreen();
+		LCD_displayString("plz enter pass:");
+		askPassword(password);
+		LCD_clearScreen();
+		LCD_displayString("plz re-enter the same pass:");
+		askPassword(passwordReenter);
+		UART_sendString(password);
+		_delay_ms(100);
+		UART_sendString(passwordReenter);
+		result = UART_recieveByte();
+		if(result){
+			/* Go through*/
+		}
+		else{
+			attempts++;
+			if(attempts>3){
+				/*lock with timer*/
+			}
+		}
+
+	}
+}
+
+
+
+

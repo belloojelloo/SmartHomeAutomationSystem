@@ -1,0 +1,96 @@
+/*
+ * main.c
+ *
+ *  Created on: Nov 2, 2024
+ *      Author: belal
+ */
+
+#include "lcd.h"
+#include <avr/io.h>
+#include "timer.h"
+#include <util/delay.h>
+#define PASS_SIZE 5
+#include "uart.h"
+#define TRUE 1
+#define FALSE 0
+uint8 result = 0;
+uint8 attempts = 0;
+uint8 disabled = FALSE;
+uint8 unlocked = FALSE;
+uint8 passwordset = FALSE;
+uint8 selection = 0;
+uint8 status = 0;
+Timer_ConfigType timer15 = {0,15625,TIMER1, F_CPU_1024,COMPARE_MODE };
+
+void askPassword(char *password){
+	for (uint8 i = 0; i < PASS_SIZE; i++) {
+		password[i] = KEYPAD_getPressedKey();
+		LCD_displayCharacter('*');
+		_delay_ms(500);
+	}
+}
+void opendoor(void){
+	LCD_clearScreen();
+	LCD_displayString("Door is opening...");
+	Timer_init(&timer15);
+}
+
+int main(void){
+	UART_ConfigType uartconfig = {8,NONE,ONE_STOP_BIT,9600};
+	UART_init(&uartconfig);
+	LCD_init();
+	char password[PASS_SIZE];
+	char passwordReenter[PASS_SIZE];
+	SREG |= (1<<7);
+	while(1){
+		/*sets pass*/
+		if(!passwordset){
+			LCD_clearScreen();
+			LCD_displayString("plz enter pass:");
+			askPassword(password);
+			LCD_clearScreen();
+			LCD_displayString("plz re-enter the same pass:");
+			askPassword(passwordReenter);
+			UART_sendString((uint8 *)password);
+			_delay_ms(100);
+			UART_sendString((uint8 *)passwordReenter);
+			result = UART_recieveByte();
+			passwordset = TRUE;
+		}
+
+		while(passwordset){
+
+			/* Go through*/
+			LCD_displayStringRowColumn(0,0,"+ : OPEN DOOR");
+			LCD_displayStringRowColumn(1,0,"- : CHANGE PASS");
+			selection = KEYPAD_getPressedKey();
+			if(selection == '+'){
+				LCD_clearScreen();
+				LCD_displayString("plz enter pass:");
+				askPassword(password);
+				_delay_ms(10);
+				UART_sendString((uint8 *)password);
+				_delay_ms(60);
+				status = UART_recieveByte();
+				if(!status){
+					attempts++;
+					if(attempts>=3){
+						/*Set timer for a min*/
+					}
+				}
+				else{
+					attempts = 0;
+
+
+				}
+			}
+		}
+
+
+	}
+}
+
+
+
+
+
